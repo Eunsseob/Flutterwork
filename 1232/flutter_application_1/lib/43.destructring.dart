@@ -18,4 +18,17 @@ void main() {
 
   // Map
   final minJiMap = {'name' : '민지', 'age' : 20};
+  final {'name' : name3, 'age' : age3}= minJiMap;
+  print(name3);
+  print(age3);
+  print('================');
+}
+
+class Idol{
+  final String name;
+  final int age;
+
+  Idol({
+    requried this name;
+  }
 }
