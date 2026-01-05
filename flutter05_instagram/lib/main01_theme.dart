@@ -29,9 +29,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(actions: [Icon(Icons.star)]),
-      body: Column(Icon(Icons.star), Text('안냥~~')),
-    );
+    return Scaffold(appBar: AppBar(actions: [Icon(Icons.star)]));
   }
 }

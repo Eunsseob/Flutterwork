@@ -1,24 +1,25 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import './style.dart' as style;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/rendering.dart';
-import 'package:intl/intl.dart';
+
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/*
+* shared preference (localStorage와 비슷)
+  : 로컬 저장 공간
+  넣을 때 : set자료형('키', '값')
+  가져올 때 : get자료형('키')
+             get('키')
+
+             자료형을 모를 경우. Object나 dynamic 반환 -> 자료를 형변환해야 할 수도 있음
+*/
 
 void main() {
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (context) => Store1()),
-        ChangeNotifierProvider(create: (context) => Store2()),
-      ],
-      child: MaterialApp(theme: style.theme, home: const MyApp()),
-    ),
-  );
+  runApp(MaterialApp(theme: style.theme, home: const MyApp()));
 }
 
 class MyApp extends StatefulWidget {
@@ -31,8 +32,42 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   var tab = 0;
   var feedItems = [];
+  // 이미지 저장공간 만들기
   var userImage;
-  var userContent;
+  var userContent; // 사용자로부터 입력받아서 저장
+
+  saveData() async {
+    var storage = await SharedPreferences.getInstance();
+    storage.setString('name', 'emmer');
+    var result = storage.get('name');
+    print(result);
+
+    storage.setBool('bool', true);
+    storage.setDouble('dou', 3.1415);
+    storage.setStringList('list', ['list1', 'list2']);
+
+    var result2 = storage.get('bool');
+    var result3 = storage.get('dou');
+    var result4 = storage.getStringList(
+      'list',
+    )?[1]; // List get만 쓰지말고 .getString을 사용하여야 하며, ? 연산자를 사용하여야함.
+    print('bool 출력 : $result2');
+    print('dou 출력 : $result3');
+    print('list 출력 : $result4');
+
+    storage.remove('dou');
+    storage.clear();
+
+    // map 저장
+    var map = {'age': 20};
+    storage.setString('map1', jsonEncode(map));
+
+    var result6 = storage.get('map');
+    print('map1 : $result6');
+    // print(jsonDecode(result6)); // Null일수도 있으니
+    var result7 = storage.getString('map') ?? '비었음';
+    print(jsonDecode(result7)['age']);
+  }
 
   setUserContent(newContent) {
     setState(() {
@@ -44,6 +79,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     getData();
+    saveData();
   }
 
   getData() async {
@@ -67,12 +103,11 @@ class _MyAppState extends State<MyApp> {
   }
 
   addMyData() {
-    String formattedData = DateFormat('MMM dd').format(DateTime.now());
     var myData = {
-      "id": feedItems.length,
+      "id": 50,
       "image": userImage,
       "likes": 0,
-      "date": formattedData,
+      "date": "Jun 02",
       "content": userContent,
       "liked": false,
       "user": "John Kim",
@@ -97,6 +132,7 @@ class _MyAppState extends State<MyApp> {
                   userImage = File(image.path);
                 });
               }
+              // picker.pickImage(source: ImageSource.camera)  // 카메라로 직접 찍기
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -201,7 +237,7 @@ class _HomeState extends State<Home> {
                   ? Image.network(widget.feedItems[i]['image'])
                   : Image.file(
                       widget.feedItems[i]['image'],
-                      height: 400,
+                      height: 250,
                       width: double.infinity,
                       fit: BoxFit.cover,
                     ),
@@ -213,22 +249,8 @@ class _HomeState extends State<Home> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('좋아요 : ${widget.feedItems[i]['likes']}'),
-                    GestureDetector(
-                      child: Text('글쓴이 : ${widget.feedItems[i]['user']}'),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                            pageBuilder: (context, a1, a2) => Profile(),
-                            transitionsBuilder: (context, a1, a2, child) =>
-                                FadeTransition(opacity: a1, child: child),
-                            transitionDuration: Duration(milliseconds: 1000),
-                          ),
-                        );
-                      },
-                    ),
+                    Text('글쓴이 : ${widget.feedItems[i]['user']}'),
                     Text('내용 : ${widget.feedItems[i]['content']}'),
-                    Text('날짜 : ${widget.feedItems[i]['date']}'),
                   ],
                 ),
               ),
@@ -240,36 +262,6 @@ class _HomeState extends State<Home> {
       return Center(child: CircularProgressIndicator());
     }
   }
-}
-
-class Store1 extends ChangeNotifier {
-  var follower = 0;
-  var isFollower = false;
-  var profileImage = [];
-
-  getData() async {
-    var result = await http.get(
-      Uri.parse('https://itwon.store/flutter/profileImg/profile.json'),
-    );
-    var result2 = jsonDecode(result.body);
-    profileImage = result2;
-    notifyListeners();
-  }
-
-  addFollower() {
-    if (isFollower) {
-      follower--;
-      isFollower = false;
-    } else {
-      follower++;
-      isFollower = true;
-    }
-    notifyListeners();
-  }
-}
-
-class Store2 extends ChangeNotifier {
-  var name = 'john kim';
 }
 
 class Upload extends StatelessWidget {
@@ -314,85 +306,6 @@ class Upload extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class Profile extends StatefulWidget {
-  const Profile({super.key});
-
-  @override
-  State<Profile> createState() => _ProfileState();
-}
-
-class _ProfileState extends State<Profile> {
-  @override
-  void initState() {
-    super.initState();
-    context.read<Store1>().getData();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(context.watch<Store2>().name)),
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: ProfileHeader()),
-          ProfileGrid(),
-        ],
-      ),
-    );
-  }
-}
-
-class ProfileGrid extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    var images = context.watch<Store1>().profileImage;
-
-    if (images.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: EdgeInsets.all(40),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      );
-    }
-
-    return SliverGrid(
-      delegate: SliverChildBuilderDelegate((context, i) {
-        return Image.network(images[i], fit: BoxFit.cover);
-      }, childCount: images.length),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 5,
-        crossAxisSpacing: 5,
-      ),
-    );
-  }
-} 
-
-class ProfileHeader extends StatelessWidget {
-  const ProfileHeader({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        CircleAvatar(
-          radius: 30,
-          backgroundImage: AssetImage('assets/img/user1.png'),
-        ),
-        Text('팔로워 ${context.watch<Store1>().follower}명'),
-        ElevatedButton(
-          onPressed: () {
-            context.read<Store1>().addFollower();
-          },
-          child: Text('팔로우'),
-        ),
-      ],
     );
   }
 }
