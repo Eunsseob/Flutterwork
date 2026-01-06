@@ -9,14 +9,14 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
-import 'shop.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
+/*
+  알림 띄우기
+  notification 2가지 종류
+  - push notification : 서버에서 보내는 알림
+  - local notification : 앱 자체에서 실행하는 알림
+*/
+void main() {
   runApp(
     MultiProvider(
       providers: [
@@ -98,10 +98,17 @@ class _MyAppState extends State<MyApp> {
         actions: [
           IconButton(
             onPressed: () {
-              showNotification();
-              print("알림을 보냈습니다");
+              showNotification2();
+              print('알림을 보냄');
             },
             icon: Icon(Icons.alarm),
+          ),
+          IconButton(
+            onPressed: () {
+              notifications.cancel(1);
+              print('취소 알림을 보냄');
+            },
+            icon: Icon(Icons.exit_to_app),
           ),
           IconButton(
             onPressed: () async {
@@ -127,7 +134,10 @@ class _MyAppState extends State<MyApp> {
           ),
         ],
       ),
-      body: [Home(feedItems: feedItems, addData: addData), Shop()][tab],
+      body: [
+        Home(feedItems: feedItems, addData: addData),
+        Text('Shop Page'),
+      ][tab],
       bottomNavigationBar: BottomNavigationBar(
         showSelectedLabels: false,
         showUnselectedLabels: false,
@@ -330,32 +340,56 @@ class Upload extends StatelessWidget {
   }
 }
 
-class Profile extends StatelessWidget {
+class Profile extends StatefulWidget {
   const Profile({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<Profile> createState() => _ProfileState();
+}
+
+class _ProfileState extends State<Profile> {
+  @override
+  void initState() {
+    super.initState();
     context.read<Store1>().getData();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(context.watch<Store2>().name)),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: ProfileHeader()),
-          SliverGrid(
-            delegate: SliverChildBuilderDelegate(
-              (c, i) => Image.network(
-                context.watch<Store1>().profileImage[i],
-                fit: BoxFit.fill,
-              ),
-              childCount: context.watch<Store1>().profileImage.length,
-            ),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 5,
-              crossAxisSpacing: 5,
-            ),
-          ),
+          ProfileGrid(),
         ],
+      ),
+    );
+  }
+}
+
+class ProfileGrid extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    var images = context.watch<Store1>().profileImage;
+
+    if (images.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    return SliverGrid(
+      delegate: SliverChildBuilderDelegate((context, i) {
+        return Image.network(images[i], fit: BoxFit.cover);
+      }, childCount: images.length),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 5,
+        crossAxisSpacing: 5,
       ),
     );
   }
